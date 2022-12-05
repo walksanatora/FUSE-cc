@@ -2,9 +2,17 @@ local utils = require('util')
 
 local dbg = peripheral.find("debugger")
 
+local enable_dbg = false
+
 local function print(str)
-    if dbg and true then
+    if dbg and enable_dbg then
         dbg.print(str)
+    end
+end
+
+local function brk()
+    if dbg and false then
+        dbg.stop()
     end
 end
 
@@ -29,7 +37,7 @@ if settings.get("fuse.enable") then
     end
     -- sMountpath : sName
     _G.MOUNTS = {
-        [""] = "hdd",
+        [""] = "hdd", --since they have diffrent names
         ["rom"] = "rom"
     }
     -- sName : fHandle
@@ -69,7 +77,6 @@ if settings.get("fuse.enable") then
 
     --#region pass throughs
     fs_new.complete = fs_old.complete
-    fs_new.isDriveRoot = fs_old.isDriveRoot --TODO: make this a modified function since modified mounts exist
     fs_new.combine = fs_old.combine
     fs_new.getName = fs_old.getName
     fs_new.getDir = fs_old.getDir
@@ -77,6 +84,14 @@ if settings.get("fuse.enable") then
     fs_new.getCapacity = fs_old.getCapacity
     --#endregion
     --modified functions
+    function fs_new.isDriveRoot(path)
+        local cpath = fs_old.combine("",path)
+        if not fs.exists(cpath) then error("path does not exists") end
+        for k,_ in pairs(MOUNTS) do
+            if k == cpath then return true end
+        end
+        return false
+    end
     function fs_new.list(path)
         return callHandle(path,'list',{['path']=path})
     end
@@ -87,36 +102,70 @@ if settings.get("fuse.enable") then
         return callHandle(path,'exists',{['path']=path})
     end
     function fs_new.isDir(path)
-        local iro = false
+        local isd = false
         xpcall(function()
             isd = fs_new.attributes(path)['isDir']
-        end,function()print("TRACEBACK: "..debug.traceback())end)
-        return iro
+        end,function()
+            if enable_dbg then print("TRACEBACK: "..debug.traceback())end
+        end)
+        return isd
     end
     function fs_new.isReadOnly(path)
         local iro = false
         xpcall(function()
             iro = fs_new.attributes(path)['isReadOnly']
-        end,function()print("TRACEBACK: "..debug.traceback().."\n\n")end)
+        end,function()
+            if enable_dbg then print("TRACEBACK: "..debug.traceback())end
+        end)
         return iro
     end
     function fs_new.makeDir(path)
         return callHandle(path,'mkdir',{['path']=path})
     end
     function fs_new.move(path,dest)
-        --todo implement, was gonna just do it but then remember cross-fs moves
+        local srct = fs_new.getDrive(path)
+        local dstt = fs_new.getDrive(dest)
+        if srct == dstt then --fs types are the same type, *I would hope you can copy between them*
+            return callHandle(path,"move",{['path']=path,['dest']=dest})
+        else
+            if HANDLES[dstt]("spec_move",{['path']=path,['dest']=dest,['type']=srct}) then --check if destination has a special handler for when the source fs copies to it
+                return HANDLES[dbg]("smove",{['path']=path,['dest']=dest,['type']=srct})
+            else
+                local rhandle = HANDLES[srct]("open",{['path']=path,['mode']='r'})
+                local whandle = HANDLES[dstt]("open",{['path']=dest,['mode']='w'}) --most errors are here
+                local rdata = ""
+                while rdata do
+                    rdata = rhandle.read(32)
+                    if rdata then print("wrote: "..rdata) end
+                    whandle.write(rdata)
+                    whandle.flush()
+                end
+                rhandle.close()
+                whandle.close()
+                fs_new.delete(path)
+            end
+        end
     end
     function fs_new.copy(path,dest)
         local srct = fs_new.getDrive(path)
         local dstt = fs_new.getDrive(dest)
-        if srct == dstt then
+        if srct == dstt then --fs types are the same type, *I would hope you can copy between them*
             return callHandle(path,"copy",{['path']=path,['dest']=dest})
         else
-            if HANDLES[dstt]("spec_copy",{['path']=path,['dest']=dest,['type']=srct}) then
-                print("destination fs has special handlers for fs type: "..srct)
-                HANDLES[dbg]("scopy",{['path']=path,['dest']=dest,['type']=srct})
+            if HANDLES[dstt]("spec_copy",{['path']=path,['dest']=dest,['type']=srct}) then --check if destination has a special handler for when the source fs copies to it
+                return HANDLES[dbg]("scopy",{['path']=path,['dest']=dest,['type']=srct})
             else
-                print("destination lacks special handlers for fs type, time to read,write data")
+                local rhandle = HANDLES[srct]("open",{['path']=path,['mode']='r'})
+                local whandle = HANDLES[dstt]("open",{['path']=dest,['mode']='w'}) --most errors are here
+                local rdata = ""
+                while rdata do
+                    rdata = rhandle.read(32)
+                    if rdata then print("wrote: "..rdata) end
+                    whandle.write(rdata)
+                    whandle.flush()
+                end
+                rhandle.close()
+                whandle.close()
             end
         end
     end
@@ -129,7 +178,7 @@ if settings.get("fuse.enable") then
     function fs_new.getDrive(path)
         return getHandleName(path)
     end
-    fs_new.find = fs_old.find
+    fs_new.find = fs_old.find --TODO: implement a version that works with custom dirs
     function fs_new.attributes(path)
         return callHandle(path,'attributes',{['path'] = path})
     end
