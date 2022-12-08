@@ -10,6 +10,15 @@ local function DeepCopy(obj,seen)
 	return setmetatable(res,getmetatable(obj))
 end
 
+local function contains(table,value)
+    for _, valu in pairs(table) do
+        if valu == value then
+            return true
+        end
+    end
+    return false
+end
+
 local function split(str, sep)
 	if sep == nil then
 			sep = "%s"
@@ -100,5 +109,6 @@ return {
 	['split'] = split,
 	['createReadHandleFromBuf'] = genericReadHandle,
     ['keys'] = keys,
+    ['contains'] = contains,
 }
 

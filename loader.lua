@@ -1,21 +1,7 @@
 local utils = require('util')
-local search = require("search")
-
-local dbg = peripheral.find("debugger")
+local find_util = require("find")
 
 local enable_dbg = false
-
-local function print(str)
-    if dbg and enable_dbg then
-        dbg.print(str)
-    end
-end
-
-local function brk()
-    if dbg and false then
-        dbg.stop()
-    end
-end
 
 if settings.get("fuse.enable") then
     local fs_old = fs
@@ -92,7 +78,9 @@ if settings.get("fuse.enable") then
         local listed = callHandle(path,'list',{['path']=path})
         for _, v in ipairs(utils.keys(MOUNTS)) do
             local p = fs.getDir(v)
-            if p == path then table.insert(listed,fs.getName(v)) end
+            local n = fs.getName(v)
+            local s = textutils.serialise
+            if (p == path) and (string.len(n) ~= 0) and not utils.contains(listed,n) then table.insert(listed,n) end
         end
         return listed
     end
@@ -154,7 +142,7 @@ if settings.get("fuse.enable") then
             return callHandle(path,"copy",{['path']=path,['dest']=dest})
         else
             if HANDLES[dstt]("spec_copy",{['path']=path,['dest']=dest,['type']=srct}) then --check if destination has a special handler for when the source fs copies to it
-                return HANDLES[dbg]("scopy",{['path']=path,['dest']=dest,['type']=srct})
+                return HANDLES[dstt]("scopy",{['path']=path,['dest']=dest,['type']=srct})
             else
                 local rhandle = HANDLES[srct]("open",{['path']=path,['mode']='r'})
                 local whandle = HANDLES[dstt]("open",{['path']=dest,['mode']='w'}) --most errors are here
@@ -179,8 +167,17 @@ if settings.get("fuse.enable") then
     function fs_new.getDrive(path)
         return getHandleName(path)
     end
-    function fs_new.find(path,glob)
-        return search.searchTree(path,glob)
+    function fs_new.find(wildcard)
+        local parts = {}
+        for p in wildcard:gmatch("[^/]+") do parts[#parts+1] = p end
+        local retval = {}
+        local disk = find_util.gen_disk()
+        print(textutils.serialise(disk,{['compact']=true}))
+        for _,v in ipairs(find_util.combineKeys(find_util.aux_find(parts, disk))) do
+            table.insert(retval, v)
+        end
+        table.sort(retval)
+        return retval
     end
     function fs_new.attributes(path)
         return callHandle(path,'attributes',{['path'] = path})
