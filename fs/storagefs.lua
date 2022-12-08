@@ -42,6 +42,43 @@ local function handlerfactory(periph,mdir,side)
             end
             table.insert(slots,"info")
             return slots
+        elseif name == "open" then
+            if string.match(opt["mode"],'r') then
+                local fname = fs.getName(opt["path"])
+                if fname == "info" then
+                    return util.createReadHandleFromBuf(textutils.serialise(periph.list()))
+                else
+                    local slot = tonumber(fname)
+                    if not slot then
+                        error("slot is not a number")
+                    end
+                    if slot > periph.size() then
+                        error("tried to index a item slot which does not exist")
+                    end
+                    local data = periph.getItemDetail(slot)
+                    return util.createReadHandleFromBuf(textutils.serialise(data))
+                end
+            else
+                error("Writability is a lie so mv works")
+            end
+        elseif name == "spec_move" then --special function to check "hey does the recieving fs have special functions for handling movement from this fs"
+            return not not util.startsWith(opt["type"],"sfs:") -- check if string starts with sfs:, then cast to bool
+        elseif name == "smove" then -- the actual handler for special move
+            --get the peripheral we are pulling from
+            local periph_name = string.sub(opt['type'],5)
+            --get the slot we are pulling from
+            local send_slot = tonumber(fs.getName(opt["path"]))
+            if not send_slot then --make sure the slot is a number
+                error("source item slot is not a number")
+            end --make sure the slot is within the number of slots of the inventory
+            if send_slot > peripheral.wrap(periph_name).size() then
+                error("tried to index a item send_slot which does not exist (sender)")
+            end
+
+            --get the recieving slot (can be nil)
+            local recv_slot = tonumber(fs.getName(opt["path"]))
+            periph.pullItems(periph_name,send_slot,nil,recv_slot)
+            return
         end
     end
     _G.MOUNTS[mdir] = "sfs:"..side
