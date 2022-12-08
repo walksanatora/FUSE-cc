@@ -12,21 +12,16 @@ local function combineKeys(t, prefix)
     return retval
 end
 
---https://gist.github.com/MCJack123/e634347fe7a3025d19d9f7fcf7e01c24#file-yellowbox-lua-L195-L210
-local function aux_find(parts, disk)
-    if #parts == 0 then return disk elseif type(disk) ~= "table" then return nil end
+--https://discord.com/channels/477910221872824320/477911902152949771/1050676423997796372
+--link is in the minecraftcomputermods discord
+local function aux_find(parts, p)
+    local ok, t = pcall(fs.list, p or "")
+    if #parts == 0 then return fs.getName(p) elseif not ok then return nil end
     local parts2 = {}
-    for i,v in ipairs(parts) do parts2[i] = v end
+    for i, v in ipairs(parts) do parts2[i] = v end
     local name = table.remove(parts2, 1)
     local retval = {}
-    if disk then
-        if #parts2 == 0 then print("pt2 = 0:"..textutils.serialise(disk,{compact=true})) end
-        for k, v in pairs(disk) do
-            if k:match("^" .. name:gsub("([%%%.])", "%%%1"):gsub("%*", "%.%*") .. "$") then
-                retval[k] = aux_find(parts2, v)
-            end
-        end
-    end
+    for _, k in pairs(t) do if k:match("^" .. name:gsub("([%%%.])", "%%%1"):gsub("%*", "%.%*") .. "$") then retval[k] = aux_find(parts2, fs.combine(p or "", k)) end end
     return retval
 end
 

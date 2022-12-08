@@ -79,7 +79,6 @@ if settings.get("fuse.enable") then
         for _, v in ipairs(utils.keys(MOUNTS)) do
             local p = fs.getDir(v)
             local n = fs.getName(v)
-            local s = textutils.serialise
             if (p == path) and (string.len(n) ~= 0) and not utils.contains(listed,n) then table.insert(listed,n) end
         end
         return listed
@@ -171,9 +170,7 @@ if settings.get("fuse.enable") then
         local parts = {}
         for p in wildcard:gmatch("[^/]+") do parts[#parts+1] = p end
         local retval = {}
-        local disk = find_util.gen_disk()
-        print(textutils.serialise(disk,{['compact']=true}))
-        for _,v in ipairs(find_util.combineKeys(find_util.aux_find(parts, disk))) do
+        for _,v in ipairs(find_util.combineKeys(find_util.aux_find(parts, shell.dir()))) do
             table.insert(retval, v)
         end
         table.sort(retval)
