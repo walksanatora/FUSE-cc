@@ -1,4 +1,5 @@
 local utils = require('util')
+local search = require("search")
 
 local dbg = peripheral.find("debugger")
 
@@ -47,12 +48,7 @@ if settings.get("fuse.enable") then
     }
     --takes a path, gets the handler fname, then passes the type and options
     function getHandleName(path)
-        local keys = {}
-        local cout = 1
-        for k, _ in pairs(MOUNTS) do
-            keys[cout] = k
-            cout = cout + 1
-        end
+        local keys = utils.keys(MOUNTS)
         table.sort(keys,function(a,b) return #a>#b end)
         local sane_path = fs_old.combine("",path)
         --print("checking for: '"..sane_path.."'")
@@ -93,7 +89,12 @@ if settings.get("fuse.enable") then
         return false
     end
     function fs_new.list(path)
-        return callHandle(path,'list',{['path']=path})
+        local listed = callHandle(path,'list',{['path']=path})
+        for _, v in ipairs(utils.keys(MOUNTS)) do
+            local p = fs.getDir(v)
+            if p == path then table.insert(listed,fs.getName(v)) end
+        end
+        return listed
     end
     function fs_new.getSize(path)
         return fs_new.attributes(path)['size']
@@ -178,15 +179,18 @@ if settings.get("fuse.enable") then
     function fs_new.getDrive(path)
         return getHandleName(path)
     end
-    fs_new.find = fs_old.find --TODO: implement a version that works with custom dirs
+    function fs_new.find(path,glob)
+        return search.searchTree(path,glob)
+    end
     function fs_new.attributes(path)
         return callHandle(path,'attributes',{['path'] = path})
     end
 
-    function fs_new.restore()
+    function fs_new.unload()
         _G.fs = fs_old
         _G.MOUNTS = nil
         _G.HANDLES = nil
+        shell.setDir("/")
     end
     _G.fs = fs_new
 else

@@ -10,7 +10,7 @@ local function DeepCopy(obj,seen)
 	return setmetatable(res,getmetatable(obj))
 end
 
-function split(str, sep)
+local function split(str, sep)
 	if sep == nil then
 			sep = "%s"
 	end
@@ -23,6 +23,16 @@ end
 
 function starts(String,Start)
 	return string.sub(String,1,string.len(Start))==Start
+end
+
+local function keys(t)
+    local keys = {}
+    local cout = 1
+    for k, _ in pairs(MOUNTS) do
+        keys[cout] = k
+        cout = cout + 1
+    end
+    return keys
 end
 
 --merges t2 into t1 (overwriting values in t1)
@@ -43,7 +53,7 @@ end
 
 --TODO: create generic handles for binary read
 --creates a read handle from a string
-function genericReadHandle(buffer)
+local function genericReadHandle(buffer)
 	local readHandle = {}
     local lbuf = buffer
     local closed = false
@@ -89,5 +99,6 @@ return {
 	['startsWith'] = starts,
 	['split'] = split,
 	['createReadHandleFromBuf'] = genericReadHandle,
+    ['keys'] = keys,
 }
 
