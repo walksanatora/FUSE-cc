@@ -1,3 +1,6 @@
+--Storagefs factory
+
+--package.path = "../?.lua;" .. package.path
 local util = require("FUSE.util")
 
 local function handlerfactory(periph,mdir,side)

@@ -79,7 +79,13 @@ if settings.get("fuse.enable") then
         for _, v in ipairs(utils.keys(MOUNTS)) do
             local p = fs.getDir(v)
             local n = fs.getName(v)
-            if (p == path) and (string.len(n) ~= 0) and not utils.contains(listed,n) then table.insert(listed,n) end
+            local s = textutils.serialise
+            if (p == path) and (string.len(n) ~= 0) and not utils.contains(listed,n) then
+                --print("appending: "..n)
+                table.insert(listed,n)
+            --else
+            --    print(s(p == path)..s(string.len(n) ~= 0)..s(not utils.contains(listed,n)).."\np:"..p.." n:"..n)
+            end
         end
         return listed
     end
