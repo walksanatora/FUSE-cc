@@ -123,7 +123,7 @@ if settings.get("fuse.enable") then
             return callHandle(path,"move",{['path']=path,['dest']=dest})
         else
             if HANDLES[dstt]("spec_move",{['path']=path,['dest']=dest,['type']=srct}) then --check if destination has a special handler for when the source fs copies to it
-                return HANDLES[dbg]("smove",{['path']=path,['dest']=dest,['type']=srct})
+                return HANDLES[dstt]("smove",{['path']=path,['dest']=dest,['type']=srct})
             else
                 local rhandle = HANDLES[srct]("open",{['path']=path,['mode']='r'})
                 local whandle = HANDLES[dstt]("open",{['path']=dest,['mode']='w'}) --most errors are here
